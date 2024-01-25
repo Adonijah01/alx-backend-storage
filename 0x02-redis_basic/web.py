@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''A script containing utilities for caching and monitoring requests.
+'''A script with tools for request caching and tracking.
 '''
 import redis
 import requests
@@ -7,33 +7,31 @@ from functools import wraps
 from typing import Callable
 
 
-redis_cache = redis.Redis()
-'''A Redis instance at the module level.
+redis_store = redis.Redis()
+'''The Redis instance.
 '''
 
 
-def data_caching_decorator(method: Callable) -> Callable:
-    '''Caches the output of fetched data.
+def data_cacher(method: Callable) -> Callable:
+    '''Caches the output.
     '''
     @wraps(method)
-    def invocation_handler(url) -> str:
-        '''The wrapper function for caching the output.
+    def invoker(url) -> str:
+        '''Wrapper function for caching.
         '''
-        redis_cache.incr(f'request_count:{url}')
-        result = redis_cache.get(f'response_data:{url}')
+        redis_store.incr(f'count:{url}')
+        result = redis_store.get(f'result:{url}')
         if result:
             return result.decode('utf-8')
         result = method(url)
-        redis_cache.set(f'request_count:{url}', 0)
-        redis_cache.setex(f'response_data:{url}', 10, result)
+        redis_store.set(f'count:{url}', 0)
+        redis_store.setex(f'result:{url}', 10, result)
         return result
-    return invocation_handler
+    return invoker
 
 
-@data_caching_decorator
-def fetch_data(url: str) -> str:
-    '''Returns the content of a URL after caching the request's response
-    and monitoring the request.
+@data_cacher
+def get_page(url: str) -> str:
+    '''Returns the content of a URL after caching the request's response.
     '''
     return requests.get(url).text
-
